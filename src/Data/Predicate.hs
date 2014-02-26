@@ -115,8 +115,8 @@ mapFail f p a =
         Okay d x -> Okay d x
 
 opt :: Predicate a f t -> Predicate a f (Maybe t)
-opt = mapResult (result (const $ Okay 0 Nothing) (\d x -> Okay d (Just x)))
+opt = mapResult (result (const $ return Nothing) (\d x -> Okay d (Just x)))
 
 def :: t -> Predicate a f t -> Predicate a f t
-def t = mapResult (result (const $ Okay 0 t) Okay)
+def t = mapResult (result (const $ return t) Okay)
 
