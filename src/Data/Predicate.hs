@@ -67,7 +67,6 @@ failure f _ = Fail f
 false :: Predicate a () t
 false = failure ()
 
-infixr 5 :::
 data a ::: b = a ::: b deriving (Eq, Show)
 
 and, (.&.) :: Predicate a f t -> Predicate a f t' -> Predicate a f (t ::: t')
