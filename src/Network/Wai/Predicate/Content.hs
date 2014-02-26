@@ -24,9 +24,10 @@ import Network.Wai.Predicate.Request
 
 import qualified Network.Wai.Predicate.Parser.MediaType as M
 
-contentType :: ByteString
+contentType :: (HasHeaders r)
+            => ByteString
             -> ByteString
-            -> Predicate Req Error (Media (t :: Symbol) (s :: Symbol))
+            -> Predicate r Error (Media (t :: Symbol) (s :: Symbol))
 contentType t s r =
     let mtypes = M.readMediaTypes "content-type" r in
     case findContentType t s mtypes of
@@ -39,7 +40,7 @@ findContentType :: ByteString -> ByteString -> [M.MediaType] -> [Media t s]
 findContentType t s = mapMaybe (\m -> do
     let mt = M.medType m
         ms = M.medSubtype m
-    guard (t == "*" || t == mt && s == "*" || s == ms)
+    guard ((t == "*" || t == mt) && (s == "*" || s == ms))
     return $ Media mt ms (quality t s) (M.medParams m))
   where
     quality "*" "*" = 0

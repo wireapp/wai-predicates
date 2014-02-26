@@ -24,7 +24,7 @@ data MediaType = MediaType
     , medParams  :: ![(ByteString, ByteString)]
     } deriving (Eq, Show)
 
-readMediaTypes :: ByteString -> Req -> [MediaType]
+readMediaTypes :: (HasHeaders r) => ByteString -> r -> [MediaType]
 readMediaTypes k r =
     sortBy q . concatMap parseMediaTypes $ lookupHeader k r
   where

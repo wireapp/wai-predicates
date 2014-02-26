@@ -5,7 +5,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Network.Wai.Predicate
-    ( getRequest
+    ( module Data.Predicate
+    , getRequest
 
     , query
     , hasQuery
@@ -13,11 +14,8 @@ module Network.Wai.Predicate
     , header
     , hasHeader
 
-    , capture
-    , hasCapture
-
-    , param
-    , hasParam
+    , segment
+    , hasSegment
 
     , cookie
     , hasCookie
@@ -25,6 +23,7 @@ module Network.Wai.Predicate
     , accept
     , contentType
     , module Network.Wai.Predicate.MediaType
+    , module Network.Wai.Predicate.Error
     ) where
 
 import Data.ByteString (ByteString)
@@ -34,60 +33,59 @@ import Data.List (find)
 import Data.Monoid
 import Data.Maybe (isJust)
 import Data.Predicate
+import Data.Word
 import Network.HTTP.Types.Status
 import Network.Wai.Predicate.Accept
 import Network.Wai.Predicate.Content
 import Network.Wai.Predicate.Error
-import Network.Wai.Predicate.Internal
 import Network.Wai.Predicate.MediaType
 import Network.Wai.Predicate.Request
+import Network.Wai.Predicate.Utility
 import Network.Wai
 
-getRequest :: Predicate Req f Request
-getRequest = Okay 0 . toRequest
+getRequest :: (HasRequest r) => Predicate r f Request
+getRequest = return . request
 
-query :: FromByteString a => ByteString -> Predicate Req Error a
-query k = let msg = "Missing query '" <> k <> "'." in
-    rqApply (lookupQuery k) readValues (err status400 msg)
+query :: (HasQuery r, FromByteString a) => ByteString -> Predicate r Error a
+query k r = case lookupQuery k r of
+    [] -> Fail (err status400 ("Missing query '" <> k <> "'."))
+    qq -> either (Fail . err status400) return (readValues qq)
 
-hasQuery :: ByteString -> Predicate Req Error ()
+hasQuery :: (HasQuery r) => ByteString -> Predicate r Error ()
 hasQuery k r =
     if null (lookupQuery k r)
         then Fail (err status400 ("Missing query '" <> k <> "'."))
-        else Okay 0 ()
+        else return ()
 
-header :: FromByteString a => ByteString -> Predicate Req Error a
-header k = let msg = "Missing header '" <> k <> "'." in
-    rqApply (lookupHeader k) readValues (err status400 msg)
+header :: (HasHeaders r, FromByteString a) => ByteString -> Predicate r Error a
+header k r = case lookupHeader k r of
+    [] -> Fail (err status400 ("Missing header '" <> k <> "'."))
+    hh -> either (Fail . err status400) return (readValues hh)
 
-hasHeader :: ByteString -> Predicate Req Error ()
+hasHeader :: (HasHeaders r) => ByteString -> Predicate r Error ()
 hasHeader k r =
     if isJust $ find ((mk k ==) . fst) (headers r)
-        then Okay 0 ()
+        then return ()
         else Fail (err status400 ("Missing header '" <> k <> "'."))
 
-capture :: FromByteString a => ByteString -> Predicate Req Error a
-capture k = let msg = "Missing path parameter '" <> k <> "'." in
-    rqApply (lookupCapture k) readValues (err status400 msg)
+segment :: (HasPath r, FromByteString a) => Word -> Predicate r Error a
+segment i r = case lookupSegment i r of
+    Nothing -> Fail (err status400 "Path segment index out of bounds.")
+    Just  s -> either (Fail . err status400) return (readValues [s])
 
-hasCapture :: ByteString -> Predicate Req Error ()
-hasCapture k r =
-    if null (lookupCapture k r)
-        then Fail (err status400 ("Missing path parameter '" <> k <> "'."))
-        else Okay 0 ()
+hasSegment :: (HasPath r) => Word -> Predicate r Error ()
+hasSegment i r =
+    if isJust $ lookupSegment i r
+        then return ()
+        else Fail (err status400 "Path segment index out of bounds.")
 
-param :: FromByteString a => ByteString -> Predicate Req Error a
-param k = query k .|. capture k
+cookie :: (HasCookies r, FromByteString a) => ByteString -> Predicate r Error a
+cookie k r = case lookupCookie k r of
+    [] -> Fail (err status400 ("Missing cookie '" <> k <> "'."))
+    cc -> either (Fail . err status400) return (readValues cc)
 
-hasParam :: ByteString -> Predicate Req Error ()
-hasParam k = hasQuery k .|. hasCapture k
-
-cookie :: FromByteString a => ByteString -> Predicate Req Error a
-cookie k = let msg = "Missing cookie '" <> k <> "'." in
-    rqApply (lookupCookie k) readValues (err status400 msg)
-
-hasCookie :: ByteString -> Predicate Req Error ()
+hasCookie :: (HasCookies r) => ByteString -> Predicate r Error ()
 hasCookie k r =
     if null (lookupCookie k r)
         then Fail (err status400 ("Missing cookie '" <> k <> "'."))
-        else Okay 0 ()
+        else return ()

@@ -6,59 +6,114 @@
 
 module Network.Wai.Predicate.Request
     ( Req
+    , HasMethod  (..)
+    , HasHeaders (..)
+    , HasCookies (..)
+    , HasQuery   (..)
+    , HasPath    (..)
+    , HasRequest (..)
+
     , fromRequest
-    , toRequest
-    , method
-    , headers
     , lookupHeader
-    , lookupCapture
     , lookupQuery
     , lookupCookie
+    , lookupSegment
     ) where
 
 import Data.ByteString (ByteString)
 import Data.CaseInsensitive (mk)
 import Data.Maybe (mapMaybe)
+import Data.Vector (Vector, (!?))
+import Data.Word
 import Network.HTTP.Types
 import Network.Wai (Request)
 import Web.Cookie
 
-import qualified Network.Wai as Wai
+import qualified Data.ByteString as B
+import qualified Network.Wai     as Wai
+import qualified Data.Vector     as Vec
+
+class HasRequest a where
+    request :: a -> Wai.Request
+
+class HasMethod a where
+    method :: a -> Method
+
+class HasHeaders a where
+    headers :: a -> RequestHeaders
+
+class HasCookies a where
+    cookies :: a -> Cookies
+
+class HasQuery a where
+    queryItems :: a -> Query
+
+class HasPath a where
+    segments :: a -> Vector ByteString
 
 data Req = Req
-    { captures :: [(ByteString, ByteString)]
-    , request  :: Request
-    , cookies  :: Cookies
+    { _request  :: Request
+    , _cookies  :: Cookies
+    , _segments :: Vector ByteString
     }
 
-fromRequest :: [(ByteString, ByteString)] -> Request -> Req
-fromRequest ca rq =
-    Req ca rq (concatMap parseCookies (getHeaders "Cookie" rq))
+instance HasRequest Req where
+    request = _request
 
-toRequest :: Req -> Request
-toRequest = request
+instance HasMethod Req where
+    method = Wai.requestMethod . request
 
-headers :: Req -> RequestHeaders
-headers = Wai.requestHeaders . request
+instance HasMethod Wai.Request where
+    method = Wai.requestMethod
 
-method :: Req -> Method
-method = Wai.requestMethod . request
+instance HasHeaders Req where
+    headers = Wai.requestHeaders . request
 
-lookupHeader :: ByteString -> Req -> [ByteString]
-lookupHeader name = getHeaders name . request
+instance HasHeaders Wai.Request where
+    headers = Wai.requestHeaders
 
-lookupCapture :: ByteString -> Req -> [ByteString]
-lookupCapture name = map snd . filter ((name ==) . fst) . captures
+instance HasQuery Req where
+    queryItems = Wai.queryString . request
 
-lookupCookie :: ByteString -> Req -> [ByteString]
+instance HasQuery Wai.Request where
+    queryItems = Wai.queryString
+
+instance HasCookies Req where
+    cookies = _cookies
+
+instance HasPath Req where
+    segments = _segments
+
+fromRequest :: Request -> Req
+fromRequest rq =
+    Req rq (concatMap parseCookies (getHeaders "Cookie" rq))
+           (Vec.fromList . splitSegments . Wai.rawPathInfo $ rq)
+
+lookupHeader :: HasHeaders r => ByteString -> r -> [ByteString]
+lookupHeader name = getHeaders name
+
+lookupSegment :: HasPath r => Word -> r -> Maybe ByteString
+lookupSegment i r = segments r !? fromIntegral i
+
+lookupCookie :: HasCookies r => ByteString -> r -> [ByteString]
 lookupCookie name = map snd . filter ((name ==) . fst) . cookies
 
-lookupQuery :: ByteString -> Req -> [ByteString]
-lookupQuery name = mapMaybe snd
-                 . filter ((name ==) . fst)
-                 . Wai.queryString
-                 . request
+lookupQuery :: HasQuery r => ByteString -> r -> [ByteString]
+lookupQuery name = mapMaybe snd . filter ((name ==) . fst) . queryItems
 
-getHeaders :: ByteString -> Wai.Request -> [ByteString]
-getHeaders name = map snd . filter ((mk name ==) . fst) . Wai.requestHeaders
+getHeaders :: HasHeaders r => ByteString -> r -> [ByteString]
+getHeaders name = map snd . filter ((mk name ==) . fst) . headers
 
+-----------------------------------------------------------------------------
+-- Internal
+
+splitSegments :: ByteString -> [ByteString]
+splitSegments a
+    | B.null a  = []
+    | "/" == a  = []
+    | otherwise = if B.head a == slash then go (B.tail a) else go a
+  where
+    go b =
+        let (x, y) = B.breakByte slash b
+        in urlDecode False x : if B.null y then [] else go (B.tail y)
+    slash = 47

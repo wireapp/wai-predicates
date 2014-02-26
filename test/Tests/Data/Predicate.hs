@@ -1,5 +1,6 @@
-{-# LANGUAGE FlexibleInstances     #-}
-{-# OPTIONS_GHC -fno-warn-orphans  #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE OverlappingInstances #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Tests.Data.Predicate (tests) where
 
@@ -17,22 +18,25 @@ tests = testGroup "Data.Predicate"
     ]
 
 testAnd :: Predicate () Int Char -> Predicate () Int Char -> Bool
-testAnd a@(Rand (Okay d x)) b@(Rand (Okay w y)) = apply (a .&. b) () == Okay (d + w) (x ::: y)
-testAnd a@(Rand (Okay _ _)) b@(Rand (Fail   y)) = apply (a .&. b) () == Fail y
-testAnd a@(Rand (Fail   x)) b@(Rand (Okay _ _)) = apply (a .&. b) () == Fail x
-testAnd a@(Rand (Fail   x)) b@(Rand (Fail   _)) = apply (a .&. b) () == Fail x
+testAnd a b = case (apply a (), apply b ()) of
+    (Okay d x, Okay w y) -> apply (a .&. b) () == Okay (d + w) (x ::: y)
+    (Okay _ _, Fail   y) -> apply (a .&. b) () == Fail y
+    (Fail   x, Okay _ _) -> apply (a .&. b) () == Fail x
+    (Fail   x, Fail   _) -> apply (a .&. b) () == Fail x
 
 testOr :: Predicate () Int Char -> Predicate () Int Char -> Bool
-testOr a@(Rand (Okay d x)) b@(Rand (Okay e y)) = apply (a ||| b) () == if d <= e then Okay d (Left x) else Okay e (Right y)
-testOr a@(Rand (Okay d x)) b@(Rand (Fail   _)) = apply (a ||| b) () == Okay d (Left x)
-testOr a@(Rand (Fail   _)) b@(Rand (Okay d y)) = apply (a ||| b) () == Okay d (Right y)
-testOr a@(Rand (Fail   _)) b@(Rand (Fail   y)) = apply (a ||| b) () == Fail y
+testOr a b = case (apply a (), apply b ()) of
+    (Okay d x, Okay e y) -> apply (a ||| b) () == if d <= e then Okay d (Left x) else Okay e (Right y)
+    (Okay d x, Fail   _) -> apply (a ||| b) () == Okay d (Left x)
+    (Fail   _, Okay d y) -> apply (a ||| b) () == Okay d (Right y)
+    (Fail   _, Fail   y) -> apply (a ||| b) () == Fail y
 
 testOr' :: Predicate () Int Char -> Predicate () Int Char -> Bool
-testOr' a@(Rand (Okay d x)) b@(Rand (Okay e y)) = apply (a .|. b) () == if d <= e then Okay d x else Okay e y
-testOr' a@(Rand (Okay d x)) b@(Rand (Fail   _)) = apply (a .|. b) () == Okay d x
-testOr' a@(Rand (Fail   _)) b@(Rand (Okay d y)) = apply (a .|. b) () == Okay d y
-testOr' a@(Rand (Fail   _)) b@(Rand (Fail   y)) = apply (a .|. b) () == Fail y
+testOr' a b = case (apply a (), apply b ()) of
+    (Okay d x, Okay e y) -> apply (a .|. b) () == if d <= e then Okay d x else Okay e y
+    (Okay d x, Fail   _) -> apply (a .|. b) () == Okay d x
+    (Fail   _, Okay d y) -> apply (a .|. b) () == Okay d y
+    (Fail   _, Fail   y) -> apply (a .|. b) () == Fail y
 
 instance Arbitrary (Result Int Char) where
     arbitrary =
@@ -40,5 +44,5 @@ instance Arbitrary (Result Int Char) where
               , Fail <$> (arbitrary :: Gen Int)
               ]
 
-instance Arbitrary (() -> Result Int Char) where
-    arbitrary = (\r _ -> r) <$> (arbitrary :: Gen (Result Int Char))
+instance Arbitrary (Predicate () Int Char) where
+    arbitrary = (\r -> const r) <$> (arbitrary :: Gen (Result Int Char))

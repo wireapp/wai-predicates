@@ -11,8 +11,8 @@ import Network.HTTP.Types
 import qualified Data.ByteString.Lazy     as Lazy
 import qualified Blaze.ByteString.Builder as Builder
 
-request :: ByteString -> Request
-request p = defaultRequest { rawPathInfo = p }
+defRequest :: ByteString -> Request
+defRequest p = defaultRequest { rawPathInfo = p }
 
 withHeader :: CI ByteString -> ByteString -> Request -> Request
 withHeader k v r = r { requestHeaders = (k, v) : requestHeaders r }

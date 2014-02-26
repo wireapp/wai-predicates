@@ -1,13 +1,12 @@
 {-# LANGUAGE DataKinds         #-}
-{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeFamilies      #-}
 
 module Tests.Wai.Predicate (tests) where
 
 import Data.ByteString (ByteString)
 import Network.HTTP.Types.Status
-import Network.Wai.Routing
+import Network.Wai.Predicate
+import Network.Wai.Predicate.Request
 import Test.Tasty
 import Test.Tasty.HUnit
 import Tests.Wai.Util
@@ -25,52 +24,52 @@ tests = testGroup "Wai.Predicate"
 
 testAcceptJson :: IO ()
 testAcceptJson = do
-    let rq0 = fromWaiRequest [] . json $ request "/"
-    T 0 (Media "application" "json" 1.0 []) @=? apply (accept :: Accept "application" "json") rq0
+    let rq0 = fromRequest . json $ defRequest "/"
+    Okay 0 (Media "application" "json" 1.0 []) @=? apply (accept "application" "json") rq0
 
-    let rq1 = fromWaiRequest [] . withHeader "Accept" "foo/bar" $ request "/"
-    F (err status406 ("Expected 'Accept: application/json'.")) @=? apply (accept :: Accept "application" "json") rq1
+    let rq1 = fromRequest . withHeader "Accept" "foo/bar" $ defRequest "/"
+    Fail (err status406 ("Expected 'Accept: application/json'.")) @=? apply (accept "application" "json") rq1
 
 testAcceptThrift :: IO ()
 testAcceptThrift = do
-    let rq0 = fromWaiRequest [] . withHeader "Accept" "application/x-thrift" $ request "/"
-    T 0 (Media "application" "x-thrift" 1.0 []) @=? apply (accept :: Accept "application" "x-thrift") rq0
+    let rq0 = fromRequest . withHeader "Accept" "application/x-thrift" $ defRequest "/"
+    Okay 0 (Media "application" "x-thrift" 1.0 []) @=? apply (accept "application" "x-thrift") rq0
 
-    let rq1 = fromWaiRequest [] . json $ request "/"
-    F (err status406 ("Expected 'Accept: application/x-thrift'.")) @=? apply (accept :: Accept "application" "x-thrift") rq1
+    let rq1 = fromRequest . json $ defRequest "/"
+    Fail (err status406 ("Expected 'Accept: application/x-thrift'.")) @=? apply (accept "application" "x-thrift") rq1
 
 testAcceptAll :: IO ()
 testAcceptAll = do
-    let rq0 = fromWaiRequest [] . withHeader "Accept" "application/*" $ request "/"
-    T 0 (Media "application" "*"    1.0 []) @=? apply (accept :: Accept "application" "*") rq0
-    T 0 (Media "application" "json" 1.0 []) @=? apply (accept :: Accept "application" "json") rq0
+    let rq0 = fromRequest . withHeader "Accept" "application/*" $ defRequest "/"
+    Okay 0 (Media "application" "*"    1.0 []) @=? apply (accept "application" "*") rq0
+    Okay 0 (Media "application" "json" 1.0 []) @=? apply (accept "application" "json") rq0
 
 testContentTypePlain :: IO ()
 testContentTypePlain = do
-    let rq0 = fromWaiRequest [] . withHeader "Content-Type" "text/plain" $ request "/"
-    T 0 (Media "text" "plain" 1.0 []) @=? apply (contentType :: ContentType "text" "plain") rq0
+    let rq0 = fromRequest . withHeader "Content-Type" "text/plain" $ defRequest "/"
+    Okay 0 (Media "text" "plain" 1.0 []) @=? apply (contentType "text" "plain") rq0
 
-    let rq1 = fromWaiRequest [] . withHeader "Content-Type" "text/html" $ request "/"
-    F (err status415 ("Expected 'Content-Type: text/plain'.")) @=? apply (contentType :: ContentType "text" "plain") rq1
+    let rq1 = fromRequest . withHeader "Content-Type" "text/html" $ defRequest "/"
+    Fail (err status415 ("Expected 'Content-Type: text/plain'.")) @=? apply (contentType "text" "plain") rq1
 
 testContentTypeAll :: IO ()
 testContentTypeAll = do
-    let rq0 = fromWaiRequest [] . withHeader "Content-Type" "text/plain" $ request "/"
-    T 0.5 (Media "text" "plain" 0.5 []) @=? apply (contentType :: ContentType "text" "*") rq0
+    let rq0 = fromRequest . withHeader "Content-Type" "text/plain" $ defRequest "/"
+    Okay 0.5 (Media "text" "plain" 0.5 []) @=? apply (contentType "text" "*") rq0
 
 testQuery :: IO ()
 testQuery = do
-    let rq0 = fromWaiRequest [] . withQuery "x" "y" . withQuery "x" "z" $ request "/"
-    T 0 "y" @=? apply (query "x" :: Query ByteString) rq0
+    let rq0 = fromRequest . withQuery "x" "y" . withQuery "x" "z" $ defRequest "/"
+    Okay 0 ("y" :: ByteString) @=? apply (query "x") rq0
 
-    let rq1 = fromWaiRequest [] $ request "/"
-    F (err status400 ("Missing query 'x'.")) @=? apply (query "x" :: Query ByteString) rq1
+    let rq1 = fromRequest $ defRequest "/"
+    Fail (err status400 ("Missing query 'x'.")) @=? apply (query "x" :: Predicate Req Error ByteString) rq1
 
 testQueryOpt :: IO ()
 testQueryOpt = do
-    let rq0 = fromWaiRequest [] . withQuery "x" "y" . withQuery "x" "z" $ request "/"
-    T 0 (Just "y") @=? apply (opt (query "x" :: Query ByteString)) rq0
+    let rq0 = fromRequest . withQuery "x" "y" . withQuery "x" "z" $ defRequest "/"
+    Okay 0 (Just ("y" :: ByteString)) @=? apply (opt (query "x")) rq0
 
-    let rq1 = fromWaiRequest [] $ request "/"
-    T 0 Nothing @=? apply (opt (query "x" :: Query ByteString)) rq1
+    let rq1 = fromRequest $ defRequest "/"
+    Okay 0 Nothing @=? apply (opt (query "x" :: Predicate Req Error ByteString)) rq1
 

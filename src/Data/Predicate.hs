@@ -21,23 +21,42 @@ module Data.Predicate
     , apply
     , opt
     , def
-    , mapR
-    , mapO
-    , mapF
+    , mapResult
+    , mapOkay
+    , mapFail
     , result
     ) where
 
+import Control.Applicative
+import Control.Monad
 import Prelude hiding (and, or)
 
 data Result f t
-    = Fail f
-    | Okay Double t
+    = Fail !f
+    | Okay !Double !t
     deriving (Eq, Ord, Show)
+
+instance Functor (Result f) where
+    fmap f (Okay d x) = Okay d (f x)
+    fmap _ (Fail   x) = Fail x
+
+instance Applicative (Result f) where
+    pure  = return
+    (<*>) = ap
+
+instance Monad (Result f) where
+    return           = Okay 0
+    (Okay _ x) >>= k = k x
+    (Fail   x) >>= _ = Fail x
+
+result :: (f -> a) -> (Double -> t -> a) -> Result f t -> a
+result f _ (Fail   x) = f x
+result _ g (Okay d x) = g d x
 
 type Predicate a f t = a -> Result f t
 
 constant :: t -> Predicate a f t
-constant t _ = Okay 0 t
+constant t _ = return t
 
 true :: Predicate a f ()
 true = constant ()
@@ -81,28 +100,24 @@ orElse f g x = f x `cmp` g x
 apply :: Predicate a f t -> a -> Result f t
 apply = ($)
 
-mapR :: (Result f t -> Result f' t') -> Predicate a f t -> Predicate a f' t'
-mapR f p = f . p
+mapResult :: (Result f t -> Result f' t') -> Predicate a f t -> Predicate a f' t'
+mapResult f p = f . p
 
-mapO :: (t -> Result f t') -> Predicate a f t -> Predicate a f t'
-mapO f p a =
+mapOkay :: (t -> Result f t') -> Predicate a f t -> Predicate a f t'
+mapOkay f p a =
     case p a of
         Okay _ x -> f x
         Fail   x -> Fail x
 
-mapF :: (f -> Result f' t) -> Predicate a f t -> Predicate a f' t
-mapF f p a =
+mapFail :: (f -> Result f' t) -> Predicate a f t -> Predicate a f' t
+mapFail f p a =
     case p a of
         Fail   x -> f x
         Okay d x -> Okay d x
 
 opt :: Predicate a f t -> Predicate a f (Maybe t)
-opt = mapR (result (const $ Okay 0 Nothing) (\d x -> Okay d (Just x)))
+opt = mapResult (result (const $ Okay 0 Nothing) (\d x -> Okay d (Just x)))
 
 def :: t -> Predicate a f t -> Predicate a f t
-def t = mapR (result (const $ Okay 0 t) Okay)
-
-result :: (f -> a) -> (Double -> t -> a) -> Result f t -> a
-result f _ (Fail   x) = f x
-result _ g (Okay d x) = g d x
+def t = mapResult (result (const $ Okay 0 t) Okay)
 
