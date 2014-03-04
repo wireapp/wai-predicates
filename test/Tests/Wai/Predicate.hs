@@ -20,56 +20,65 @@ tests = testGroup "Wai.Predicate"
     , testCase "Content-Type text/*" testContentTypeAll
     , testCase "Query" testQuery
     , testCase "QueryOpt" testQueryOpt
+    , testCase "exec" testExec
     ]
 
 testAcceptJson :: IO ()
 testAcceptJson = do
     let rq0 = fromRequest . json $ defRequest "/"
-    Okay 0 (Media "application" "json" 1.0 []) @=? apply (accept "application" "json") rq0
+    Okay 0 (Media "application" "json" 1.0 []) @=? (accept "application" "json") rq0
 
     let rq1 = fromRequest . withHeader "Accept" "foo/bar" $ defRequest "/"
-    Fail (err status406 ("Expected 'Accept: application/json'.")) @=? apply (accept "application" "json") rq1
+    Fail (err status406 ("Expected 'Accept: application/json'.")) @=? (accept "application" "json") rq1
 
 testAcceptThrift :: IO ()
 testAcceptThrift = do
     let rq0 = fromRequest . withHeader "Accept" "application/x-thrift" $ defRequest "/"
-    Okay 0 (Media "application" "x-thrift" 1.0 []) @=? apply (accept "application" "x-thrift") rq0
+    Okay 0 (Media "application" "x-thrift" 1.0 []) @=? (accept "application" "x-thrift") rq0
 
     let rq1 = fromRequest . json $ defRequest "/"
-    Fail (err status406 ("Expected 'Accept: application/x-thrift'.")) @=? apply (accept "application" "x-thrift") rq1
+    Fail (err status406 ("Expected 'Accept: application/x-thrift'.")) @=? (accept "application" "x-thrift") rq1
 
 testAcceptAll :: IO ()
 testAcceptAll = do
     let rq0 = fromRequest . withHeader "Accept" "application/*" $ defRequest "/"
-    Okay 0 (Media "application" "*"    1.0 []) @=? apply (accept "application" "*") rq0
-    Okay 0 (Media "application" "json" 1.0 []) @=? apply (accept "application" "json") rq0
+    Okay 0 (Media "application" "*"    1.0 []) @=? (accept "application" "*") rq0
+    Okay 0 (Media "application" "json" 1.0 []) @=? (accept "application" "json") rq0
 
 testContentTypePlain :: IO ()
 testContentTypePlain = do
     let rq0 = fromRequest . withHeader "Content-Type" "text/plain" $ defRequest "/"
-    Okay 0 (Media "text" "plain" 1.0 []) @=? apply (contentType "text" "plain") rq0
+    Okay 0 (Media "text" "plain" 1.0 []) @=? (contentType "text" "plain") rq0
 
     let rq1 = fromRequest . withHeader "Content-Type" "text/html" $ defRequest "/"
-    Fail (err status415 ("Expected 'Content-Type: text/plain'.")) @=? apply (contentType "text" "plain") rq1
+    Fail (err status415 ("Expected 'Content-Type: text/plain'.")) @=? (contentType "text" "plain") rq1
 
 testContentTypeAll :: IO ()
 testContentTypeAll = do
     let rq0 = fromRequest . withHeader "Content-Type" "text/plain" $ defRequest "/"
-    Okay 0.5 (Media "text" "plain" 0.5 []) @=? apply (contentType "text" "*") rq0
+    Okay 0.5 (Media "text" "plain" 0.5 []) @=? (contentType "text" "*") rq0
 
 testQuery :: IO ()
 testQuery = do
     let rq0 = fromRequest . withQuery "x" "y" . withQuery "x" "z" $ defRequest "/"
-    Okay 0 ("y" :: ByteString) @=? apply (query "x") rq0
+    Okay 0 ("y" :: ByteString) @=? (query "x") rq0
 
     let rq1 = fromRequest $ defRequest "/"
-    Fail (err status400 ("Missing query 'x'.")) @=? apply (query "x" :: Predicate Req Error ByteString) rq1
+    Fail (err status400 ("Missing query 'x'.")) @=? (query "x" :: Predicate Req Error ByteString) rq1
 
 testQueryOpt :: IO ()
 testQueryOpt = do
     let rq0 = fromRequest . withQuery "x" "y" . withQuery "x" "z" $ defRequest "/"
-    Okay 0 (Just ("y" :: ByteString)) @=? apply (opt (query "x")) rq0
+    Okay 0 (Just ("y" :: ByteString)) @=? (opt (query "x")) rq0
 
     let rq1 = fromRequest $ defRequest "/"
-    Okay 0 Nothing @=? apply (opt (query "x" :: Predicate Req Error ByteString)) rq1
+    Okay 0 Nothing @=? (opt (query "x" :: Predicate Req Error ByteString)) rq1
+
+testExec :: IO ()
+testExec = do
+    let unit = const $ return ()
+    let rq = fromRequest . withQuery "x" "42" . withHeader "a" "b" $ defRequest "/"
+    exec (query "x" .&. header "a") rq unit $ \args -> do
+        args#_1  @=? (42  :: Int)
+        args#_2' @=? ("b" :: ByteString)
 

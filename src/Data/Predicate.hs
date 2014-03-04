@@ -6,7 +6,6 @@
 
 module Data.Predicate
     ( Predicate
-    , Result (..)
     , constant
     , failure
     , true
@@ -14,61 +13,51 @@ module Data.Predicate
     , and
     , or
     , orElse
-    , (:::) (..)
     , (.&.)
     , (.|.)
     , (|||)
-    , apply
     , opt
     , def
     , mapResult
     , mapOkay
     , mapFail
-    , result
+    , exec
+    , module Data.Predicate.Product
+    , module Data.Predicate.Result
     ) where
 
-import Control.Applicative
 import Control.Monad
+import Data.Predicate.Product
+import Data.Predicate.Result
 import Prelude hiding (and, or)
 
-data Result f t
-    = Fail !f
-    | Okay !Double !t
-    deriving (Eq, Ord, Show)
-
-instance Functor (Result f) where
-    fmap f (Okay d x) = Okay d (f x)
-    fmap _ (Fail   x) = Fail x
-
-instance Applicative (Result f) where
-    pure  = return
-    (<*>) = ap
-
-instance Monad (Result f) where
-    return           = Okay 0
-    (Okay _ x) >>= k = k x
-    (Fail   x) >>= _ = Fail x
-
-result :: (f -> a) -> (Double -> t -> a) -> Result f t -> a
-result f _ (Fail   x) = f x
-result _ g (Okay d x) = g d x
-
+-- | A predicate is a function of some value of type @a@ to a 'Result',
+-- i.e. a 'Bool'-like value with 'Okay' as 'True' and 'Fail' as 'False',
+-- which carries additional data in each branch.
 type Predicate a f t = a -> Result f t
 
+-- | A predicate which always returns @Okay@ with the given
+-- value as metadata.
 constant :: t -> Predicate a f t
 constant t _ = return t
 
 true :: Predicate a f ()
 true = constant ()
 
+-- | A predicate which always returns @Fail@ with the given
+-- value as metadata.
 failure :: f -> Predicate a f t
 failure f _ = Fail f
 
 false :: Predicate a () t
 false = failure ()
 
-data a ::: b = a ::: b deriving (Eq, Show)
+infixr 3 .&.
+infixr 2 .|.
+infixr 2 |||
 
+-- | A predicate corresponding to the logical AND connective
+-- of two predicate.
 and, (.&.) :: Predicate a f t -> Predicate a f t' -> Predicate a f (t ::: t')
 and f g x = f x `cmp` g x
   where
@@ -76,6 +65,13 @@ and f g x = f x `cmp` g x
     cmp (Okay _ _) (Fail   y) = Fail y
     cmp (Fail   y) _          = Fail y
 
+-- | A predicate corresponding to the logical
+-- OR connective of two predicates. It requires the
+-- metadata of each @Okay@ branch to be of the same type.
+--
+-- If both arguments evaluate to @Okay@ the one with the
+-- smaller \"delta\" will be preferred, or--if equal--the
+-- left-hand argument.
 or, (.|.) :: Predicate a f t -> Predicate a f t -> Predicate a f t
 or f g x = f x `cmp` g x
   where
@@ -84,6 +80,13 @@ or f g x = f x `cmp` g x
     cmp (Fail _)     b@(Okay _ _)  = b
     cmp (Fail _)     b@(Fail _)    = b
 
+-- | A predicate corresponding to the logical
+-- OR connective of two predicates. The metadata of
+-- each @Okay@ branch can be of different types.
+--
+-- If both arguments evaluate to @Okay@ the one with the
+-- smaller \"delta\" will be preferred, or--if equal--the
+-- left-hand argument.
 orElse, (|||) :: Predicate a f t -> Predicate a f t' -> Predicate a f (Either t t')
 orElse f g x = f x `cmp` g x
   where
@@ -96,27 +99,36 @@ orElse f g x = f x `cmp` g x
 (.|.) = or
 (|||) = orElse
 
-apply :: Predicate a f t -> a -> Result f t
-apply = ($)
-
+-- | Map the result of the given predicate to some other result.
 mapResult :: (Result f t -> Result f' t') -> Predicate a f t -> Predicate a f' t'
 mapResult f p = f . p
 
+-- | Like 'mapResult', but only maps the @Okay@ metadata to another result.
 mapOkay :: (t -> Result f t') -> Predicate a f t -> Predicate a f t'
 mapOkay f p a =
     case p a of
         Okay _ x -> f x
         Fail   x -> Fail x
 
+-- | Like 'mapResult', but only maps the @Fail@ metadata to another result.
 mapFail :: (f -> Result f' t) -> Predicate a f t -> Predicate a f' t
 mapFail f p a =
     case p a of
         Fail   x -> f x
         Okay d x -> Okay d x
 
+-- | A predicate modifier which makes the given predicate optional,
+-- i.e. the @Okay@ metadata type becomes a 'Maybe' and in the failure-case
+-- 'Nothing' is returned.
 opt :: Predicate a f t -> Predicate a f (Maybe t)
 opt = mapResult (result (const $ return Nothing) (\d x -> Okay d (Just x)))
 
+-- | A predicate modifier which returns as @Okay@ metadata the provided default
+-- value if the given predicate fails.
 def :: t -> Predicate a f t -> Predicate a f t
 def t = mapResult (result (const $ return t) Okay)
 
+exec :: Predicate a f t -> a -> (f -> b) -> (t -> b) -> b
+exec p a g f = case p a of
+    Okay _ x -> f x
+    Fail   x -> g x

@@ -15,6 +15,10 @@ extra-source-files:
     README.md
 
 description:
+    Evaluate predicate functions against WAI requests and receive
+    metadata in addition to a success/failure indicator.
+    Predicates can be combined using logical connectives and the
+    metadata are passed on accordingly.
 
 source-repository head
     type:             git
@@ -35,6 +39,8 @@ library
         Network.Wai.Predicate.Utility
 
     other-modules:
+        Data.Predicate.Product
+        Data.Predicate.Result
         Network.Wai.Predicate.Accept
         Network.Wai.Predicate.Content
         Network.Wai.Predicate.Parser.MediaType
@@ -43,7 +49,7 @@ library
         attoparsec       >= 0.10  && < 0.12
       , base             == 4.*
       , bytestring       >= 0.9   && < 0.11
-      , bytestring-from  == 0.1.*
+      , bytestring-from  == 0.2.*
       , cookie           == 0.4.*
       , case-insensitive == 1.1.*
       , http-types       == 0.8.*
