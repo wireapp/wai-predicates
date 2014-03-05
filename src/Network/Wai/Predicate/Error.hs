@@ -7,7 +7,7 @@ module Network.Wai.Predicate.Error where
 import Data.ByteString (ByteString)
 import Network.HTTP.Types.Status
 
--- | The error type used as meta-data for @F@ in all WAI predicates.
+-- | The error type used as meta-data for @Fail@ in all WAI predicates.
 data Error = Error
     { status  :: !Status          -- ^ HTTP status code
     , message :: Maybe ByteString -- ^ optional status message

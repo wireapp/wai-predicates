@@ -6,6 +6,7 @@
 
 module Data.Predicate
     ( Predicate
+    , module Data.Predicate.Result
     , constant
     , failure
     , true
@@ -23,7 +24,6 @@ module Data.Predicate
     , mapFail
     , exec
     , module Data.Predicate.Product
-    , module Data.Predicate.Result
     ) where
 
 import Control.Monad
