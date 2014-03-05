@@ -34,7 +34,7 @@ import qualified Network.Wai     as Wai
 import qualified Data.Vector     as Vec
 
 class HasRequest a where
-    request :: a -> Wai.Request
+    getRequest :: a -> Wai.Request
 
 class HasMethod a where
     method :: a -> Method
@@ -58,22 +58,22 @@ data Req = Req
     }
 
 instance HasRequest Req where
-    request = _request
+    getRequest = _request
 
 instance HasMethod Req where
-    method = Wai.requestMethod . request
+    method = Wai.requestMethod . getRequest
 
 instance HasMethod Wai.Request where
     method = Wai.requestMethod
 
 instance HasHeaders Req where
-    headers = Wai.requestHeaders . request
+    headers = Wai.requestHeaders . getRequest
 
 instance HasHeaders Wai.Request where
     headers = Wai.requestHeaders
 
 instance HasQuery Req where
-    queryItems = Wai.queryString . request
+    queryItems = Wai.queryString . getRequest
 
 instance HasQuery Wai.Request where
     queryItems = Wai.queryString

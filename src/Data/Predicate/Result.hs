@@ -8,6 +8,8 @@ module Data.Predicate.Result where
 
 import Control.Applicative
 import Control.Monad
+import Control.Monad.Trans.Class
+import Control.Monad.IO.Class
 
 -- | A 'Bool'-like type where each branch--@Fail@ and @Okay@--carries
 -- some metadata.
@@ -33,6 +35,12 @@ result :: (f -> a) -> (Double -> t -> a) -> Result f t -> a
 result f _ (Fail   x) = f x
 result _ g (Okay d x) = g d x
 
+fromEither :: Either f t -> Result f t
+fromEither = either Fail return
+
+toEither :: Result f t -> Either f t
+toEither = result Left (\_ x -> Right x)
+
 newtype ResultT f m t = ResultT { runResultT :: m (Result f t) }
 
 instance Monad m => Functor (ResultT f m) where
@@ -43,20 +51,35 @@ instance Monad m => Applicative (ResultT f m) where
     (<*>) = ap
 
 instance Monad m => Monad (ResultT f m) where
-    return  = ResultT . return . Okay 0
+    return  = ResultT . return . return
     m >>= k = ResultT $ runResultT m >>= \a -> case a of
         Okay _ x -> runResultT (k x)
         Fail   x -> return (Fail x)
     fail = ResultT . fail
+
+instance MonadTrans (ResultT f) where
+    lift = ResultT . liftM return
+
+instance MonadIO m => MonadIO (ResultT f m) where
+    liftIO = lift . liftIO
 
 resultT :: Monad m => (f -> m a) -> (Double -> t -> m a) -> ResultT f m t -> m a
 resultT f g (ResultT m) = m >>= \a -> case a of
     Fail   x -> f x
     Okay d x -> g d x
 
+resultT' :: Monad m => (f -> m a) -> (t -> m a) -> ResultT f m t -> m a
+resultT' f g = resultT f (\_ x -> g x)
+
 mapResultT :: (m (Result f t) -> n (Result f' t')) -> ResultT f m t -> ResultT f' n t'
 mapResultT f m = ResultT $ f (runResultT m)
 
 hoistResult :: Monad m => Result f t -> ResultT f m t
 hoistResult = ResultT . return
+
+okay :: Monad m => Double -> t -> ResultT f m t
+okay d = hoistResult . Okay d
+
+throwF :: Monad m => f -> ResultT f m t
+throwF = hoistResult . Fail
 

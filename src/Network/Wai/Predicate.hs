@@ -6,7 +6,7 @@
 
 module Network.Wai.Predicate
     ( module Data.Predicate
-    , getRequest
+    , request
 
     , query
     , hasQuery
@@ -43,8 +43,8 @@ import Network.Wai.Predicate.Request
 import Network.Wai.Predicate.Utility
 import Network.Wai
 
-getRequest :: (HasRequest r) => Predicate r f Request
-getRequest = return . request
+request :: (HasRequest r) => Predicate r f Request
+request = return . getRequest
 
 query :: (HasQuery r, FromByteString a) => ByteString -> Predicate r Error a
 query k r = case lookupQuery k r of
