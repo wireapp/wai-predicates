@@ -13,6 +13,7 @@ cabal-version:       >= 1.10
 
 extra-source-files:
     README.md
+    CHANGELOG.md
 
 description:
     Evaluate predicate functions against WAI requests and receive
