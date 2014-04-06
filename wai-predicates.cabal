@@ -1,5 +1,5 @@
 name:                wai-predicates
-version:             0.3.2
+version:             0.4
 synopsis:            WAI request predicates
 license:             OtherLicense
 license-file:        LICENSE
