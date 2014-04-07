@@ -1,5 +1,6 @@
 0.4
 -----------------------------------------------------------------------------
+- Use `singletons` library instead of `GHC.TypeLits` from base.
 - Remove `mapResult` (use `fmap` instead).
 
 0.3.2
