@@ -8,8 +8,8 @@ module Network.Wai.Predicate
     ( module Data.Predicate
     , request
 
-    , ifAbsent
-    , optional
+    , def
+    , opt
 
     , query
     , hasQuery
@@ -52,25 +52,15 @@ import Network.Wai
 
 import qualified Data.Vault.Lazy as Vault
 
--- | Similar to 'def' but specialised to predicates which use 'Error' as
--- their 'Fail' metadata. It only falls back on the provided default value
--- in case the error 'Reason' is 'NotAvailable', 'TypeError's will not be
--- recovered from.
-ifAbsent :: a -> Predicate r Error a -> Predicate r Error a
-ifAbsent a = fmap $ \x ->
-    case x of
-        f@(Fail e) -> if NotAvailable `isReasonOf` e then return a else f
-        ok         -> ok
+def :: a -> Predicate r Error a -> Predicate r Error a
+def a = fmap $
+    result (\e -> if not (TypeError `isReasonOf` e) then return a else Fail e)
+           Okay
 
--- | Similar to 'opt' but specialised to predicates which use 'Error' as
--- their 'Fail' metadata. It only falls back on 'Nothing' in case the
--- error 'Reason' is 'NotAvailable', 'TypeError's will not be recovered
--- from.
-optional :: Predicate r Error a -> Predicate r Error (Maybe a)
-optional = fmap $ \x ->
-    case x of
-        Fail   e -> if NotAvailable `isReasonOf` e then return Nothing else Fail e
-        Okay _ a -> return (Just a)
+opt :: Predicate r Error a -> Predicate r Error (Maybe a)
+opt = fmap $
+    result (\e -> if not (TypeError `isReasonOf` e) then return Nothing else Fail e)
+           (\d -> Okay d . Just)
 
 request :: HasRequest r => Predicate r f Request
 request = return . getRequest
