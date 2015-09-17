@@ -1,11 +1,11 @@
 name:                wai-predicates
-version:             0.8.4
+version:             0.8.5
 synopsis:            WAI request predicates
-license:             OtherLicense
-license-file:        LICENSE
+license:             MPL-2.0
+license-file:        LICENSE.txt
 author:              Toralf Wittner
 maintainer:          Toralf Wittner <tw@dtex.org>
-copyright:           (c) 2014 Toralf Wittner
+copyright:           (C) 2014-2015 Toralf Wittner
 homepage:            https://github.com/twittner/wai-predicates/
 bug-reports:         https://github.com/twittner/wai-predicates/issues
 stability:           experimental
@@ -60,7 +60,7 @@ library
       , cookie                == 0.4.*
       , case-insensitive      >= 1.1    && < 2.0
       , http-types            >= 0.8    && < 1.0
-      , singletons            >= 0.10   && < 2.0
+      , singletons            >= 0.10   && < 3.0
       , transformers          >= 0.3    && < 0.5
       , vault                 == 0.3.*
       , vector                >= 0.10   && < 1.0
