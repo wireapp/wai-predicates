@@ -71,7 +71,6 @@ test-suite wai-predicate-tests
     hs-source-dirs:   test
     main-is:          TestSuite.hs
     ghc-options:      -Wall -O2 -fwarn-tabs
-    ghc-prof-options: -prof -auto-all
 
     other-modules:
         Tests.Data.Predicate
