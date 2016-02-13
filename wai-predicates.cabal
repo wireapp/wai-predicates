@@ -1,13 +1,13 @@
 name:                wai-predicates
-version:             0.8.5
+version:             0.8.6
 synopsis:            WAI request predicates
 license:             MPL-2.0
 license-file:        LICENSE.txt
 author:              Toralf Wittner
 maintainer:          Toralf Wittner <tw@dtex.org>
-copyright:           (C) 2014-2015 Toralf Wittner
-homepage:            https://github.com/twittner/wai-predicates/
-bug-reports:         https://github.com/twittner/wai-predicates/issues
+copyright:           (C) 2014-2016 Toralf Wittner
+homepage:            https://gitlab.com/twittner/wai-predicates/
+bug-reports:         https://gitlab.com/twittner/wai-predicates/issues
 stability:           experimental
 category:            Web
 build-type:          Simple
@@ -29,7 +29,7 @@ description:
 
 source-repository head
     type:             git
-    location:         git://github.com/twittner/wai-predicates.git
+    location:         git@gitlab.com:twittner/wai-predicates.git
 
 library
     default-language: Haskell2010
