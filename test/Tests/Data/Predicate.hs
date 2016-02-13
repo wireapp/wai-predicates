@@ -48,7 +48,11 @@ instance Arbitrary (Result Int Char) where
               , Fail <$> (arbitrary :: Gen Int)
               ]
 
+#if __GLASGOW_HASKELL__ < 710
 instance Arbitrary (Predicate () Int Char) where
+#else
+instance {-# OVERLAPPING #-} Arbitrary (Predicate () Int Char) where
+#endif
     arbitrary = (\r -> const r) <$> (arbitrary :: Gen (Result Int Char))
 
 instance Show (Predicate () Int Char) where
