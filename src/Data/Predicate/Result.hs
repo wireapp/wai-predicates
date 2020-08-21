@@ -1,9 +1,13 @@
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE CPP #-}
 
 module Data.Predicate.Result where
 
 import Control.Applicative
 import Control.Monad
+#if !MIN_VERSION_base(4,13,0)
+import qualified Control.Monad.Fail as Fail
+#endif
 import Control.Monad.Trans.Class
 import Control.Monad.IO.Class
 import Prelude
@@ -52,7 +56,14 @@ instance Monad m => Monad (ResultT f m) where
     m >>= k = ResultT $ runResultT m >>= \a -> case a of
         Okay _ x -> runResultT (k x)
         Fail   x -> return (Fail x)
+
+#if !MIN_VERSION_base(4,13,0)
+instance Fail.MonadFail m => Fail.MonadFail (ResultT f m) where
+    fail = ResultT . Fail.fail
+#else
+instance MonadFail m => MonadFail (ResultT f m) where
     fail = ResultT . fail
+#endif
 
 instance MonadTrans (ResultT f) where
     lift = ResultT . liftM return
