@@ -1,8 +1,20 @@
 image: fpco/stack-build:lts
 
+test:8.8:
+  script:
+    - stack --no-terminal --resolver lts-16 --install-ghc test
+
+test:8.6:
+  script:
+    - stack --no-terminal --resolver lts-14 --install-ghc test
+
+test:8.4:
+  script:
+    - stack --no-terminal --resolver lts-12 --install-ghc test
+
 test:8.2:
   script:
-    - stack --no-terminal --resolver nightly-2017-07-31 --install-ghc test
+    - stack --no-terminal --resolver lts-11 --install-ghc test
 
 test:8.0:
   script:
@@ -15,4 +27,3 @@ test:7.10:
 test:7.8:
   script:
     - stack --no-terminal --resolver lts-2 --install-ghc test
-
