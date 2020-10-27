@@ -1,29 +1,44 @@
-image: fpco/stack-build:lts
+variables:
+  STORE_DIR: "${CI_PROJECT_DIR}/.cabal-store"
+
+cache:
+  key: "$CI_JOB_NAME"
+  paths:
+    - .cabal-store
+    - dist-newstyle/cache
+
+before_script:
+  - apt -qq update
+  - cabal update
 
 test:8.8:
+  image: haskell:8.8
   script:
-    - stack --no-terminal --resolver lts-16 --install-ghc test
+    - cabal --store-dir=$STORE_DIR new-build
+    - cabal --store-dir=$STORE_DIR new-test
 
 test:8.6:
+  image: haskell:8.6
   script:
-    - stack --no-terminal --resolver lts-14 --install-ghc test
+    - cabal --store-dir=$STORE_DIR new-build
+    - cabal --store-dir=$STORE_DIR new-test
 
 test:8.4:
+  image: haskell:8.4
   script:
-    - stack --no-terminal --resolver lts-12 --install-ghc test
+    - cabal --store-dir=$STORE_DIR new-build
+    - cabal --store-dir=$STORE_DIR new-test
 
 test:8.2:
+  image: haskell:8.2
   script:
-    - stack --no-terminal --resolver lts-11 --install-ghc test
+    - cabal --store-dir=$STORE_DIR new-build
+    - cabal --store-dir=$STORE_DIR new-test
 
 test:8.0:
+  image: haskell:8.0
   script:
-    - stack --no-terminal --resolver lts-9 --install-ghc test
-
-test:7.10:
-  script:
-    - stack --no-terminal --resolver lts-6 --install-ghc test
-
-test:7.8:
-  script:
-    - stack --no-terminal --resolver lts-2 --install-ghc test
+    - apt -qq install build-essential netbase xz-utils libstdc++-4.9-dev > /dev/null
+    - cabal install --enable-test --only-dep -j
+    - cabal build
+    - cabal test
