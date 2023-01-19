@@ -1,18 +1,17 @@
 {-# LANGUAGE CPP            #-}
 {-# LANGUAGE DataKinds      #-}
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE RankNTypes     #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Network.Wai.Predicate.MediaType where
 
 import Data.ByteString (ByteString)
-import Data.Singletons
-import Data.Singletons.TypeLits
-
-#if MIN_VERSION_singletons(2,3,0)
+import GHC.TypeLits
 import Data.Text.Encoding (encodeUtf8)
-#else
-import Data.ByteString.Char8 (pack)
-#endif
+import Data.Proxy
+import Data.Text
 
 data Media (t :: Symbol) (s :: Symbol) = Media
     { rawType      :: !ByteString
@@ -21,22 +20,8 @@ data Media (t :: Symbol) (s :: Symbol) = Media
     , mediaParams  :: ![(ByteString, ByteString)]
     } deriving (Eq, Show)
 
-mediaType :: KnownSymbol t => Media t s -> ByteString
-mediaType m = withSing (f m)
-  where
-    f :: Media t s -> Sing t -> ByteString
-#if MIN_VERSION_singletons(2,3,0)
-    f _ t = encodeUtf8 (fromSing t)
-#else
-    f _ t = pack (fromSing t)
-#endif
+mediaType :: forall t s. KnownSymbol t => Media t s -> ByteString
+mediaType _m = encodeUtf8 (pack (symbolVal (Proxy @t)))
 
-mediaSubType :: KnownSymbol s => Media t s -> ByteString
-mediaSubType m = withSing (f m)
-  where
-    f :: Media t s -> Sing s -> ByteString
-#if MIN_VERSION_singletons(2,3,0)
-    f _ s = encodeUtf8 (fromSing s)
-#else
-    f _ s = pack (fromSing s)
-#endif
+mediaSubType :: forall t s. KnownSymbol s => Media t s -> ByteString
+mediaSubType _m = encodeUtf8 (pack (symbolVal (Proxy @s)))

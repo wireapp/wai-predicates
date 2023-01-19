@@ -58,7 +58,6 @@ library
       , cookie                >= 0.4
       , case-insensitive      >= 1.1
       , http-types            >= 0.8
-      , singletons            >= 0.10
       , text                  >= 1.2
       , transformers          >= 0.3
       , vault                 >= 0.3

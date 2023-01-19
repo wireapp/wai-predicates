@@ -9,9 +9,8 @@ module Network.Wai.Predicate.Content
 
 import Control.Monad
 import Data.ByteString (ByteString)
-import Data.Monoid hiding (All)
 import Data.Predicate
-import Data.Singletons.TypeLits (Symbol)
+import GHC.TypeLits
 import Data.Maybe
 import Network.Wai.Predicate.Error
 import Network.Wai.Predicate.MediaType

@@ -24,11 +24,11 @@ instance Functor (Result f) where
     fmap _ (Fail   x) = Fail x
 
 instance Applicative (Result f) where
-    pure  = return
+    pure  = Okay 0
     (<*>) = ap
 
 instance Monad (Result f) where
-    return           = Okay 0
+    return           = pure
     (Okay _ x) >>= k = k x
     (Fail   x) >>= _ = Fail x
 
@@ -48,11 +48,11 @@ instance Monad m => Functor (ResultT f m) where
     fmap f = ResultT . liftM (fmap f) . runResultT
 
 instance Monad m => Applicative (ResultT f m) where
-    pure  = return
+    pure  = ResultT . return . return
     (<*>) = ap
 
 instance Monad m => Monad (ResultT f m) where
-    return  = ResultT . return . return
+    return  = pure
     m >>= k = ResultT $ runResultT m >>= \a -> case a of
         Okay _ x -> runResultT (k x)
         Fail   x -> return (Fail x)
